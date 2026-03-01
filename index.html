@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Niketon's Meal Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f3ee; --card: #fff; --accent: #c8602a; --accent2: #2a7c3f;
+    --dark: #1a1208; --muted: #8a7a68; --border: #e4d9cc;
+    --shadow: 0 2px 20px rgba(26,18,8,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--dark); min-height: 100vh; }
+
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ─── AUTH SCREENS ─── */
+  .auth-bg {
+    flex: 1; align-items: center; justify-content: center;
+    background: linear-gradient(140deg, #1a1208 0%, #3d2410 55%, #c8602a 100%);
+  }
+  .auth-box {
+    background: #fff; border-radius: 24px; width: 390px; max-width: 94vw;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.35); overflow: hidden;
+  }
+  .auth-header { padding: 36px 40px 28px; border-bottom: 1px solid var(--border); }
+  .auth-header h1 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 2px; }
+  .auth-header .app-title { font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; }
+  .auth-tabs { display: flex; gap: 0; margin-top: 18px; border: 2px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .auth-tab {
+    flex: 1; padding: 9px 0; text-align: center; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; background: #fff; color: var(--muted); border: none; font-family: 'DM Sans'; transition: all 0.2s;
+  }
+  .auth-tab.active { background: var(--dark); color: #fff; }
+  .auth-body { padding: 28px 40px 36px; }
+
+  .fgroup { margin-bottom: 18px; }
+  .fgroup label { display: block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .fgroup input {
+    width: 100%; padding: 12px 15px; border: 2px solid var(--border); border-radius: 11px;
+    font-family: 'DM Sans'; font-size: 0.95rem; color: var(--dark); background: var(--bg); transition: border-color 0.2s;
+  }
+  .fgroup input:focus { outline: none; border-color: var(--accent); background: #fff; }
+  .btn-main {
+    width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none;
+    border-radius: 11px; font-family: 'DM Sans'; font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; margin-top: 4px;
+  }
+  .btn-main:hover { background: #a84e22; transform: translateY(-1px); }
+  .btn-main.secondary { background: var(--dark); }
+  .btn-main.secondary:hover { background: #2d1e0a; }
+  .err-msg { font-size: 0.83rem; margin-top: 10px; padding: 9px 13px; border-radius: 9px; display: none; text-align: center; }
+  .err-msg.err { background: #fee2e2; color: #991b1b; }
+  .err-msg.ok  { background: #d1fae5; color: #065f46; }
+  .auth-footer { text-align: center; padding: 0 40px 28px; font-size: 0.78rem; color: var(--muted); }
+
+  /* ─── APP SHELL ─── */
+  #screen-app { flex-direction: column; }
+  .topbar {
+    background: var(--dark); color: #fff; padding: 0 28px; height: 60px;
+    display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand { font-family: 'Playfair Display', serif; font-size: 1.15rem; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar-user { font-size: 0.85rem; color: #c8b99a; }
+  .role-pill { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 700; }
+  .role-pill.manager { background: #fef3c7; color: #92400e; }
+  .role-pill.member  { background: #dbeafe; color: #1e40af; }
+  .btn-logout { background: transparent; border: 1px solid #555; color: #c8b99a; padding: 5px 13px; border-radius: 8px; cursor: pointer; font-family: 'DM Sans'; font-size: 0.8rem; transition: all 0.2s; }
+  .btn-logout:hover { border-color: var(--accent); color: var(--accent); }
+
+  .app-body { max-width: 1080px; margin: 0 auto; padding: 28px 20px; width: 100%; }
+
+  /* ─── TABS ─── */
+  .tabs { display: flex; gap: 7px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 8px 20px; border-radius: 100px; border: 2px solid var(--border);
+    background: #fff; font-family: 'DM Sans'; font-size: 0.86rem; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; color: var(--muted);
+  }
+  .tab-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; animation: fadeIn 0.18s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+  /* ─── CARDS ─── */
+  .card { background: #fff; border-radius: 16px; padding: 24px 26px; box-shadow: var(--shadow); margin-bottom: 18px; border: 1px solid var(--border); }
+  .card h2 { font-family: 'Playfair Display', serif; font-size: 1.35rem; margin-bottom: 18px; }
+  .card h3 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 13px; }
+
+  /* ─── STATS ─── */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 13px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 13px; padding: 18px 20px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .stat-card .s-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .stat-card .s-val { font-family: 'Playfair Display', serif; font-size: 1.85rem; font-weight: 700; }
+  .stat-card.accent .s-val { color: var(--accent); }
+  .stat-card.green  .s-val { color: var(--accent2); }
+
+  /* ─── TABLE ─── */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .tbl th { text-align: left; padding: 9px 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); border-bottom: 2px solid var(--border); }
+  .tbl td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tbody tr:hover td { background: var(--bg); }
+
+  /* ─── BADGES ─── */
+  .mbadge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 100px; font-size: 0.73rem; font-weight: 700; }
+  .mbadge.s      { background: #e0f2fe; color: #075985; }
+  .mbadge.b      { background: #fef3c7; color: #92400e; }
+  .mbadge.l      { background: #d1fae5; color: #065f46; }
+  .mbadge.d      { background: #ede9fe; color: #4c1d95; }
+  .mbadge.no     { background: #f0f0f0; color: #999; }
+  .mbadge.locked { background: #fee2e2; color: #991b1b; }
+  .mbadge.open   { background: #fef9c3; color: #854d0e; }
+  .mbadge.set    { background: #d1fae5; color: #065f46; }
+
+  /* ─── MEAL TOGGLE ─── */
+  .meal-toggle { display: flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+  .meal-toggle input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .meal-toggle input:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  /* ─── INLINE FORM ─── */
+  .frow { display: grid; gap: 13px; }
+  .frow.c2 { grid-template-columns: 1fr 1fr; }
+  .frow.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .fg { display: flex; flex-direction: column; gap: 5px; }
+  .fg label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .fg input, .fg select {
+    padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px;
+    font-family: 'DM Sans'; font-size: 0.9rem; color: var(--dark); background: var(--bg); transition: border-color 0.2s;
+  }
+  .fg input:focus, .fg select:focus { outline: none; border-color: var(--accent); }
+
+  /* ─── BUTTONS ─── */
+  .btn { padding: 9px 18px; border: none; border-radius: 9px; font-family: 'DM Sans'; font-weight: 600; font-size: 0.86rem; cursor: pointer; transition: all 0.2s; }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #a84e22; }
+  .btn.green { background: var(--accent2); color: #fff; }
+  .btn.green:hover { background: #1e6332; }
+  .btn.red { background: #e53e3e; color: #fff; }
+  .btn.red:hover { background: #c53030; }
+  .btn.ghost { background: #fff; color: var(--dark); border: 2px solid var(--border); }
+  .btn.ghost:hover { border-color: var(--accent); }
+  .btn.sm { padding: 5px 12px; font-size: 0.78rem; }
+
+  /* ─── ALERT ─── */
+  .alert { padding: 10px 14px; border-radius: 9px; font-size: 0.84rem; margin-top: 13px; display: none; }
+  .alert.ok  { background: #d1fae5; color: #065f46; }
+  .alert.err { background: #fee2e2; color: #991b1b; }
+
+  /* ─── BALANCE CARD ─── */
+  .mbal-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 13px;
+    padding: 16px 20px; margin-bottom: 10px; display: flex; align-items: center;
+    justify-content: space-between; box-shadow: var(--shadow);
+  }
+  .mbal-card .mname { font-weight: 600; }
+  .mbal-card .mid-tag { font-size: 0.76rem; color: var(--muted); }
+  .bal-amt { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; }
+  .bal-amt.pos  { color: var(--accent2); }
+  .bal-amt.neg  { color: #e53e3e; }
+  .bal-amt.zero { color: var(--muted); }
+
+  .text-muted { color: var(--muted); font-size: 0.82rem; }
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+  .submitted-banner {
+    background: #d1fae5; border: 1px solid #6ee7b7; border-radius: 11px;
+    padding: 13px 16px; margin-bottom: 16px; font-size: 0.88rem; color: #065f46; font-weight: 500;
+  }
+  .month-sel { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; flex-wrap: wrap; }
+  .month-sel label { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .month-sel input[type=month], .month-sel input[type=date] {
+    padding: 7px 12px; border: 2px solid var(--border); border-radius: 9px; font-family: 'DM Sans'; font-size: 0.86rem; background: var(--bg);
+  }
+
+  .page-footer { text-align: center; padding: 16px 0 28px; color: var(--muted); font-size: 0.78rem; }
+
+  @media (max-width: 600px) {
+    .frow.c2, .frow.c3 { grid-template-columns: 1fr; }
+    .topbar { padding: 0 12px; }
+    .topbar-brand { font-size: 0.95rem; }
+    .app-body { padding: 16px 12px; }
+    .auth-body, .auth-header { padding-left: 24px; padding-right: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SCREEN: LOGIN / SIGNUP
+══════════════════════════════════════ -->
+<div class="screen active auth-bg" id="screen-login">
+  <div class="auth-box">
+    <div class="auth-header">
+      <div class="app-title">🍽 Niketon's Meal Management</div>
+      <h1>Welcome Back</h1>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab" id="tab-signup-btn" onclick="switchAuthTab('signup')">Sign Up</button>
+      </div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div class="auth-body" id="login-form">
+      <div class="fgroup">
+        <label>User ID</label>
+        <input type="text" id="login-uid" placeholder="Enter your User ID (e.g. U001)" autocomplete="off">
+      </div>
+      <div class="fgroup">
+        <label>5-Digit PIN</label>
+        <input type="password" id="login-pin" maxlength="5" placeholder="Enter your PIN" inputmode="numeric">
+      </div>
+      <button class="btn-main" onclick="doLogin()">Sign In →</button>
+      <div class="err-msg err" id="login-err"></div>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div class="auth-body" id="signup-form" style="display:none">
+      <div class="fgroup">
+        <label>Full Name</label>
+        <input type="text" id="su-name" placeholder="Your full name" autocomplete="off">
+      </div>
+      <div class="fgroup">
+        <label>User ID <span style="font-weight:400;font-size:0.85em;text-transform:none">(choose a unique ID, e.g. U001)</span></label>
+        <input type="text" id="su-uid" placeholder="e.g. U001, U002 …" autocomplete="off">
+      </div>
+      <div class="fgroup">
+        <label>5-Digit PIN</label>
+        <input type="password" id="su-pin1" maxlength="5" placeholder="Choose a 5-digit PIN" inputmode="numeric">
+      </div>
+      <div class="fgroup">
+        <label>Confirm PIN</label>
+        <input type="password" id="su-pin2" maxlength="5" placeholder="Repeat your PIN" inputmode="numeric">
+      </div>
+      <button class="btn-main secondary" onclick="doSignup()">Create Account →</button>
+      <div class="err-msg" id="signup-msg"></div>
+    </div>
+
+    <div class="auth-footer">Developed by <strong style="color:var(--dark)">MD Rakibul Haque</strong></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN: MAIN APP
+══════════════════════════════════════ -->
+<div class="screen" id="screen-app">
+  <div class="topbar">
+    <div class="topbar-brand">🍽 Niketon's Meal Management</div>
+    <div class="topbar-right">
+      <div class="topbar-user" id="tb-name"></div>
+      <span class="role-pill" id="tb-role"></span>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="tabs" id="tab-bar"></div>
+    <div id="tab-content"></div>
+    <div class="page-footer">Developed by <strong style="color:var(--dark)">MD Rakibul Haque</strong></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════
+const STORE = 'niketon_v1';
+function loadDB() { try { return JSON.parse(localStorage.getItem(STORE)); } catch(e) { return null; } }
+function save() { localStorage.setItem(STORE, JSON.stringify(db)); }
+
+function freshDB() {
+  return {
+    // Manager pre-seeded with default PIN 00000
+    members: [
+      { id: 'MGR', name: 'Manager', role: 'manager', pin: '00000' }
+    ],
+    meals: {},
+    deposits: [],
+    mealPrices: { sahur: 25, breakfast: 30, lunch: 60, dinner: 50 }
+  };
+}
+
+let db = loadDB() || freshDB();
+if (!loadDB()) save();
+
+// Always ensure MGR exists with default PIN
+(function() {
+  let mgr = db.members.find(m => m.id === 'MGR');
+  if (!mgr) {
+    db.members.unshift({ id: 'MGR', name: 'Manager', role: 'manager', pin: '00000' });
+  } else if (mgr.pin === null) {
+    mgr.pin = '00000';
+  }
+  // Ensure sahur price exists
+  if (db.mealPrices.sahur === undefined) db.mealPrices.sahur = 25;
+  save();
+})();
+let currentUser = null;
+
+// ══════════════════════════════════════
+//  SCREEN SWITCHER
+// ══════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════
+//  AUTH TAB SWITCHER
+// ══════════════════════════════════════
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('login-form').style.display  = isLogin ? '' : 'none';
+  document.getElementById('signup-form').style.display = isLogin ? 'none' : '';
+  document.getElementById('tab-login-btn').className  = 'auth-tab' + (isLogin ? ' active' : '');
+  document.getElementById('tab-signup-btn').className = 'auth-tab' + (!isLogin ? ' active' : '');
+  document.getElementById('login-err').style.display  = 'none';
+  document.getElementById('signup-msg').style.display = 'none';
+}
+
+// ══════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════
+function doLogin() {
+  const uid = document.getElementById('login-uid').value.trim().toUpperCase();
+  const pin = document.getElementById('login-pin').value.trim();
+  const user = db.members.find(m => m.id === uid);
+
+  if (!user) { showMsg('login-err', 'err', 'User ID not found. Please sign up first.'); return; }
+  if (user.pin === null) { showMsg('login-err', 'err', 'No PIN set. Please sign up to create your account.'); return; }
+  if (pin !== user.pin) { showMsg('login-err', 'err', 'Incorrect PIN. Please try again.'); return; }
+
+  launchApp(user);
+}
+
+document.getElementById('login-pin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ══════════════════════════════════════
+//  SIGNUP
+// ══════════════════════════════════════
+function doSignup() {
+  const name = document.getElementById('su-name').value.trim();
+  const uid  = document.getElementById('su-uid').value.trim().toUpperCase();
+  const pin1 = document.getElementById('su-pin1').value.trim();
+  const pin2 = document.getElementById('su-pin2').value.trim();
+
+  if (!name) { showMsg('signup-msg', 'err', 'Please enter your full name.'); return; }
+  if (!uid)  { showMsg('signup-msg', 'err', 'Please choose a User ID.'); return; }
+  if (uid === 'MGR') { showMsg('signup-msg', 'err', 'That ID is reserved for the manager.'); return; }
+  if (db.members.find(m => m.id === uid)) { showMsg('signup-msg', 'err', `User ID "${uid}" is already taken. Choose another.`); return; }
+  if (!/^\d{5}$/.test(pin1)) { showMsg('signup-msg', 'err', 'PIN must be exactly 5 digits (numbers only).'); return; }
+  if (pin1 !== pin2) { showMsg('signup-msg', 'err', 'PINs do not match. Please re-enter.'); return; }
+  if (db.members.filter(m => m.role === 'member').length >= 20) { showMsg('signup-msg', 'err', 'Maximum 20 members reached. Contact the manager.'); return; }
+
+  const newUser = { id: uid, name, role: 'member', pin: pin1 };
+  db.members.push(newUser);
+  save();
+
+  showMsg('signup-msg', 'ok', `✓ Account created! Signing you in…`);
+  setTimeout(() => launchApp(newUser), 900);
+}
+
+document.getElementById('su-pin2').addEventListener('keydown', e => { if (e.key === 'Enter') doSignup(); });
+
+function showMsg(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = 'err-msg ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type === 'err') setTimeout(() => el.style.display = 'none', 5000);
+}
+
+// ══════════════════════════════════════
+//  LAUNCH APP
+// ══════════════════════════════════════
+function launchApp(user) {
+  currentUser = user;
+  document.getElementById('login-uid').value = '';
+  document.getElementById('login-pin').value = '';
+  document.getElementById('tb-name').textContent = user.name;
+  const rp = document.getElementById('tb-role');
+  rp.textContent = user.role === 'manager' ? 'Manager' : 'Member';
+  rp.className   = 'role-pill ' + user.role;
+  show('screen-app');
+  renderApp();
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('login-uid').value = '';
+  document.getElementById('login-pin').value = '';
+  switchAuthTab('login');
+  show('screen-login');
+}
+
+// ══════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════
+function renderApp() {
+  const isM = currentUser.role === 'manager';
+  const tabs = isM
+    ? ['Dashboard', 'Mark Meals', 'Deposits', 'Monthly Report', 'Settings']
+    : ['My Meals', 'My Account'];
+  const bar = document.getElementById('tab-bar');
+  const content = document.getElementById('tab-content');
+  bar.innerHTML = ''; content.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = t;
+    btn.onclick = () => {
+      bar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      content.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.getElementById('tp-' + i).classList.add('active');
+    };
+    bar.appendChild(btn);
+    const pane = document.createElement('div');
+    pane.className = 'tab-pane' + (i === 0 ? ' active' : '');
+    pane.id = 'tp-' + i;
+    content.appendChild(pane);
+  });
+  if (isM) {
+    renderDashboard(document.getElementById('tp-0'));
+    renderMarkMeals(document.getElementById('tp-1'));
+    renderDeposits(document.getElementById('tp-2'));
+    renderMonthlyReport(document.getElementById('tp-3'));
+    renderSettings(document.getElementById('tp-4'));
+  } else {
+    renderMyMeals(document.getElementById('tp-0'));
+    renderMyAccount(document.getElementById('tp-1'));
+  }
+}
+
+// ══════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════
+function today()    { return new Date().toISOString().split('T')[0]; }
+function nowYM()    { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() + 1 }; }
+function ymStr(y,m) { return `${y}-${String(m).padStart(2,'0')}`; }
+function monthLabel(y, m) { return new Date(y, m-1).toLocaleString('default', { month: 'long', year: 'numeric' }); }
+function allMembers() { return db.members.filter(m => m.role === 'member'); }
+function memberName(uid) { const u = db.members.find(m => m.id === uid); return u ? u.name : uid; }
+function getUserDay(uid, date) { return (db.meals[date] || {})[uid] || {}; }
+
+function mealCounts(uid, y, mo) {
+  let s=0, b = 0, l = 0, d = 0;
+  Object.entries(db.meals).forEach(([date, dm]) => {
+    if (!date.startsWith(ymStr(y, mo))) return;
+    const mx = dm[uid] || {};
+    if (mx.sahur) s++; if (mx.breakfast) b++; if (mx.lunch) l++; if (mx.dinner) d++;
+  });
+  return { sahur: s, breakfast: b, lunch: l, dinner: d, total: s+b+l+d };
+}
+function mealCost(uid, y, mo) {
+  const c = mealCounts(uid, y, mo);
+  return c.sahur*db.mealPrices.sahur + c.breakfast*db.mealPrices.breakfast + c.lunch*db.mealPrices.lunch + c.dinner*db.mealPrices.dinner;
+}
+function depositTotal(uid, y, mo) {
+  return db.deposits.filter(d => d.uid===uid && d.year===y && d.month===mo).reduce((s,d)=>s+d.amount,0);
+}
+
+function bs(has) { return has ? '<span class="mbadge s">✓ S</span>' : '<span class="mbadge no">—</span>'; }
+function bb(has) { return has ? '<span class="mbadge b">✓ B</span>' : '<span class="mbadge no">—</span>'; }
+function bl(has) { return has ? '<span class="mbadge l">✓ L</span>' : '<span class="mbadge no">—</span>'; }
+function bd(has) { return has ? '<span class="mbadge d">✓ D</span>' : '<span class="mbadge no">—</span>'; }
+
+function flash(id, type, msg, ms) {
+  const el = document.getElementById(id); if (!el) return;
+  el.className = 'alert ' + type; el.textContent = msg; el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', ms || 3000);
+}
+
+// ══════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════
+function renderDashboard(pane) {
+  const {year,month} = nowYM();
+  const members = allMembers();
+  let tM=0, tC=0, tD=0;
+  members.forEach(m => { tM+=mealCounts(m.id,year,month).total; tC+=mealCost(m.id,year,month); tD+=depositTotal(m.id,year,month); });
+  pane.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card"><div class="s-label">Month</div><div class="s-val" style="font-size:1.1rem">${monthLabel(year,month)}</div></div>
+      <div class="stat-card accent"><div class="s-label">Total Meals</div><div class="s-val">${tM}</div></div>
+      <div class="stat-card"><div class="s-label">Total Cost</div><div class="s-val">৳${tC.toLocaleString()}</div></div>
+      <div class="stat-card green"><div class="s-label">Total Deposited</div><div class="s-val">৳${tD.toLocaleString()}</div></div>
+    </div>
+    <div class="card"><h2>Today — ${today()}</h2>${todayTable()}</div>
+    <div class="card"><h2>Member Balances — ${monthLabel(year,month)}</h2>${balCards(year,month)}</div>`;
+}
+
+function todayTable() {
+  const dm = db.meals[today()] || {};
+  let html = `<table class="tbl"><thead><tr><th>Member</th><th>Sahur</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th><th>Status</th></tr></thead><tbody>`;
+  allMembers().forEach(m => {
+    const mx = dm[m.id] || {};
+    html += `<tr>
+      <td><strong>${m.name}</strong><br><span class="text-muted">${m.id}</span></td>
+      <td>${bs(mx.sahur)}</td><td>${bb(mx.breakfast)}</td><td>${bl(mx.lunch)}</td><td>${bd(mx.dinner)}</td>
+      <td>${mx.submitted ? '<span class="mbadge locked">🔒 Submitted</span>' : '<span class="mbadge open">Pending</span>'}</td>
+    </tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function balCards(year, month) {
+  if (!allMembers().length) return '<p class="text-muted">No members registered yet.</p>';
+  return allMembers().map(m => {
+    const cost=mealCost(m.id,year,month), dep=depositTotal(m.id,year,month), bal=dep-cost;
+    return `<div class="mbal-card">
+      <div><div class="mname">${m.name}</div><div class="mid-tag">${m.id} · ${mealCounts(m.id,year,month).total} meals</div></div>
+      <div style="text-align:right">
+        <div class="bal-amt ${bal>0?'pos':bal<0?'neg':'zero'}">${bal>=0?'+':''}৳${bal.toLocaleString()}</div>
+        <div class="text-muted">Dep: ৳${dep} | Cost: ৳${cost}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+//  MARK MEALS (manager)
+// ══════════════════════════════════════
+function renderMarkMeals(pane) {
+  pane.innerHTML = `
+    <div class="card">
+      <h2>Mark Meals</h2>
+      <p class="text-muted" style="margin-bottom:16px">You can edit any day's meals, including already submitted records.</p>
+      <div class="month-sel"><label>Date</label><input type="date" id="mgr-date" value="${today()}" onchange="refreshMgrMeals()"></div>
+      <div id="mgr-wrap"></div>
+      <div style="margin-top:16px"><button class="btn green" onclick="saveMgrMeals()">💾 Save Changes</button></div>
+      <div class="alert" id="mgr-alert"></div>
+    </div>`;
+  refreshMgrMeals();
+}
+
+function refreshMgrMeals() {
+  const date = document.getElementById('mgr-date').value;
+  const dm = db.meals[date] || {};
+  const members = allMembers();
+  if (!members.length) { document.getElementById('mgr-wrap').innerHTML = '<p class="text-muted">No members registered yet.</p>'; return; }
+  let html = `<table class="tbl"><thead><tr><th>Member</th><th>Sahur</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th><th>Status</th></tr></thead><tbody>`;
+  members.forEach(m => {
+    const mx = dm[m.id] || {};
+    html += `<tr>
+      <td><strong>${m.name}</strong><br><span class="text-muted">${m.id}</span></td>
+      <td><label class="meal-toggle"><input type="checkbox" data-uid="${m.id}" data-meal="sahur"     ${mx.sahur?'checked':''}><span>Yes</span></label></td>
+      <td><label class="meal-toggle"><input type="checkbox" data-uid="${m.id}" data-meal="breakfast" ${mx.breakfast?'checked':''}><span>Yes</span></label></td>
+      <td><label class="meal-toggle"><input type="checkbox" data-uid="${m.id}" data-meal="lunch"     ${mx.lunch?'checked':''}><span>Yes</span></label></td>
+      <td><label class="meal-toggle"><input type="checkbox" data-uid="${m.id}" data-meal="dinner"    ${mx.dinner?'checked':''}><span>Yes</span></label></td>
+      <td>${mx.submitted ? '<span class="mbadge locked">🔒 Submitted</span>' : '<span class="mbadge open">Open</span>'}</td>
+    </tr>`;
+  });
+  document.getElementById('mgr-wrap').innerHTML = html + '</tbody></table>';
+}
+
+function saveMgrMeals() {
+  const date = document.getElementById('mgr-date').value;
+  if (!db.meals[date]) db.meals[date] = {};
+  document.querySelectorAll('#mgr-wrap input[type=checkbox]').forEach(cb => {
+    const uid=cb.dataset.uid, meal=cb.dataset.meal;
+    if (!db.meals[date][uid]) db.meals[date][uid] = {};
+    db.meals[date][uid][meal] = cb.checked;
+  });
+  save();
+  flash('mgr-alert','ok','✓ Meals saved!');
+}
+
+// ══════════════════════════════════════
+//  DEPOSITS
+// ══════════════════════════════════════
+function renderDeposits(pane) {
+  const {year,month} = nowYM();
+  pane.innerHTML = `
+    <div class="card">
+      <h2>Record Deposit</h2>
+      <div class="frow c3">
+        <div class="fg"><label>Member</label>
+          <select id="dep-uid"><option value="">Select member…</option>
+            ${allMembers().map(m=>`<option value="${m.id}">${m.name} (${m.id})</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label>Amount (৳)</label><input type="number" id="dep-amt" placeholder="e.g. 1000" min="1"></div>
+        <div class="fg"><label>Month</label><input type="month" id="dep-month" value="${ymStr(year,month)}"></div>
+      </div>
+      <div style="margin-top:14px"><button class="btn green" onclick="addDeposit()">+ Add Deposit</button></div>
+      <div class="alert" id="dep-alert"></div>
+    </div>
+    <div class="card"><h2>Deposit History</h2><div id="dep-history">${depHistory()}</div></div>`;
+}
+
+function addDeposit() {
+  const uid=document.getElementById('dep-uid').value, amt=parseFloat(document.getElementById('dep-amt').value), mv=document.getElementById('dep-month').value;
+  if (!uid||!amt||amt<=0||!mv) return flash('dep-alert','err','Please fill all fields correctly.');
+  const [y,mo] = mv.split('-').map(Number);
+  db.deposits.push({ id:Date.now(), uid, amount:amt, year:y, month:mo, date:today() });
+  save();
+  document.getElementById('dep-amt').value='';
+  document.getElementById('dep-history').innerHTML = depHistory();
+  flash('dep-alert','ok','✓ Deposit recorded!');
+}
+
+function depHistory() {
+  if (!db.deposits.length) return '<p class="text-muted">No deposits yet.</p>';
+  let html=`<table class="tbl"><thead><tr><th>Date</th><th>Member</th><th>Month</th><th>Amount</th><th></th></tr></thead><tbody>`;
+  [...db.deposits].reverse().forEach(d => {
+    html+=`<tr>
+      <td>${d.date}</td>
+      <td>${memberName(d.uid)}<br><span class="text-muted">${d.uid}</span></td>
+      <td>${monthLabel(d.year,d.month)}</td>
+      <td style="font-weight:700;color:var(--accent2)">৳${d.amount.toLocaleString()}</td>
+      <td><button class="btn red sm" onclick="delDeposit(${d.id})">✕</button></td>
+    </tr>`;
+  });
+  return html+'</tbody></table>';
+}
+
+function delDeposit(id) {
+  if (!confirm('Delete this deposit?')) return;
+  db.deposits = db.deposits.filter(d=>d.id!==id);
+  save(); document.getElementById('dep-history').innerHTML = depHistory();
+}
+
+// ══════════════════════════════════════
+//  MONTHLY REPORT
+// ══════════════════════════════════════
+function renderMonthlyReport(pane) {
+  const {year,month} = nowYM();
+  pane.innerHTML=`<div class="month-sel"><label>Report For</label><input type="month" id="rpt-m" value="${ymStr(year,month)}" onchange="refreshReport()"></div><div id="rpt-body"></div>`;
+  refreshReport();
+}
+
+function refreshReport() {
+  const mv=document.getElementById('rpt-m').value, [y,mo]=mv.split('-').map(Number);
+  const members=allMembers(); let tM=0,tC=0,tD=0,rows='';
+  members.forEach(m => {
+    const c=mealCounts(m.id,y,mo), cost=mealCost(m.id,y,mo), dep=depositTotal(m.id,y,mo), bal=dep-cost;
+    tM+=c.total; tC+=cost; tD+=dep;
+    rows+=`<tr>
+      <td><strong>${m.name}</strong><br><span class="text-muted">${m.id}</span></td>
+      <td>${c.sahur}</td><td>${c.breakfast}</td><td>${c.lunch}</td><td>${c.dinner}</td>
+      <td style="font-weight:700">${c.total}</td>
+      <td>৳${cost.toLocaleString()}</td>
+      <td style="color:var(--accent2);font-weight:600">৳${dep.toLocaleString()}</td>
+      <td style="font-weight:700;${bal>=0?'color:var(--accent2)':'color:#e53e3e'}">${bal>=0?'+':''}৳${bal.toLocaleString()}</td>
+    </tr>`;
+  });
+  const net=tD-tC;
+  document.getElementById('rpt-body').innerHTML=`
+    <div class="stats-row">
+      <div class="stat-card"><div class="s-label">Period</div><div class="s-val" style="font-size:1.05rem">${monthLabel(y,mo)}</div></div>
+      <div class="stat-card accent"><div class="s-label">Total Meals</div><div class="s-val">${tM}</div></div>
+      <div class="stat-card"><div class="s-label">Total Cost</div><div class="s-val">৳${tC.toLocaleString()}</div></div>
+      <div class="stat-card green"><div class="s-label">Total Deposited</div><div class="s-val">৳${tD.toLocaleString()}</div></div>
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <h2>Full Report — ${monthLabel(y,mo)}</h2>
+      ${members.length ? `<table class="tbl">
+        <thead><tr><th>Member</th><th>Sahur</th><th>B'fast</th><th>Lunch</th><th>Dinner</th><th>Total</th><th>Cost</th><th>Deposited</th><th>Balance</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="font-weight:700;background:var(--bg)">
+          <td>TOTAL</td><td></td><td></td><td></td><td></td><td>${tM}</td>
+          <td>৳${tC.toLocaleString()}</td><td>৳${tD.toLocaleString()}</td>
+          <td style="${net>=0?'color:var(--accent2)':'color:#e53e3e'}">${net>=0?'+':''}৳${net.toLocaleString()}</td>
+        </tr></tfoot>
+      </table>` : '<p class="text-muted">No members registered yet.</p>'}
+    </div>
+    <div class="card"><p>Meal rates — <strong>Sahur: ৳${db.mealPrices.sahur}</strong> &nbsp;|&nbsp; <strong>Breakfast: ৳${db.mealPrices.breakfast}</strong> &nbsp;|&nbsp; <strong>Lunch: ৳${db.mealPrices.lunch}</strong> &nbsp;|&nbsp; <strong>Dinner: ৳${db.mealPrices.dinner}</strong></p></div>`;
+}
+
+// ══════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════
+function renderSettings(pane) {
+  pane.innerHTML=`
+    <div class="card">
+      <h2>Meal Prices</h2>
+      <div class="frow c3" style="grid-template-columns:1fr 1fr 1fr 1fr">
+        <div class="fg"><label>Sahur (৳)</label><input type="number" id="pr-s" value="${db.mealPrices.sahur}" min="0"></div>
+        <div class="fg"><label>Breakfast (৳)</label><input type="number" id="pr-b" value="${db.mealPrices.breakfast}" min="0"></div>
+        <div class="fg"><label>Lunch (৳)</label><input type="number" id="pr-l" value="${db.mealPrices.lunch}" min="0"></div>
+        <div class="fg"><label>Dinner (৳)</label><input type="number" id="pr-d" value="${db.mealPrices.dinner}" min="0"></div>
+      </div>
+      <div style="margin-top:14px"><button class="btn primary" onclick="savePrices()">Save Prices</button></div>
+      <div class="alert" id="price-alert"></div>
+    </div>
+    <div class="card">
+      <h2>Registered Members</h2>
+      <div id="members-tbl">${memberTable()}</div>
+    </div>
+    <div class="card">
+      <h2>Change Manager PIN</h2>
+      <p class="text-muted" style="margin-bottom:14px">Update your own manager login PIN.</p>
+      <div class="frow c2" style="max-width:420px;margin-bottom:14px">
+        <div class="fg"><label>New PIN (5 digits)</label><input type="password" id="mgr-pin1" maxlength="5" placeholder="New PIN" inputmode="numeric"></div>
+        <div class="fg"><label>Confirm PIN</label><input type="password" id="mgr-pin2" maxlength="5" placeholder="Repeat PIN" inputmode="numeric"></div>
+      </div>
+      <button class="btn primary" onclick="changeMgrPin()">Update PIN</button>
+      <div class="alert" id="mgr-pin-alert"></div>
+    </div>
+    <div class="card">
+      <h2>Reset a Member's PIN</h2>
+      <p class="text-muted" style="margin-bottom:14px">Removes their PIN so they must sign up again with the same User ID.</p>
+      <div class="fg" style="max-width:260px;margin-bottom:14px">
+        <label>Member</label>
+        <select id="reset-uid"><option value="">Select…</option>
+          ${allMembers().map(m=>`<option value="${m.id}">${m.name} (${m.id})</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn ghost" onclick="resetPin()">🔓 Reset PIN</button>
+      <div class="alert" id="reset-alert"></div>
+    </div>`;
+}
+
+function changeMgrPin() {
+  const p1 = document.getElementById('mgr-pin1').value.trim();
+  const p2 = document.getElementById('mgr-pin2').value.trim();
+  if (!/^\d{5}$/.test(p1)) return flash('mgr-pin-alert','err','PIN must be exactly 5 digits.');
+  if (p1 !== p2) return flash('mgr-pin-alert','err','PINs do not match.');
+  const mgr = db.members.find(m => m.id === 'MGR');
+  mgr.pin = p1; save();
+  document.getElementById('mgr-pin1').value = '';
+  document.getElementById('mgr-pin2').value = '';
+  flash('mgr-pin-alert','ok','✓ Manager PIN updated!');
+}
+
+function savePrices() {
+  db.mealPrices.sahur    =parseFloat(document.getElementById('pr-s').value)||0;
+  db.mealPrices.breakfast=parseFloat(document.getElementById('pr-b').value)||0;
+  db.mealPrices.lunch    =parseFloat(document.getElementById('pr-l').value)||0;
+  db.mealPrices.dinner   =parseFloat(document.getElementById('pr-d').value)||0;
+  save(); flash('price-alert','ok','✓ Prices updated!');
+}
+
+function memberTable() {
+  const members=allMembers();
+  if (!members.length) return '<p class="text-muted">No members have signed up yet.</p>';
+  let html=`<table class="tbl"><thead><tr><th>ID</th><th>Name</th><th>PIN</th><th></th></tr></thead><tbody>`;
+  members.forEach(m => {
+    html+=`<tr>
+      <td>${m.id}</td><td>${m.name}</td>
+      <td>${m.pin?'<span class="mbadge set">✓ Set</span>':'<span class="mbadge no">Not set</span>'}</td>
+      <td><button class="btn red sm" onclick="removeMember('${m.id}')">Remove</button></td>
+    </tr>`;
+  });
+  return html+'</tbody></table>';
+}
+
+function removeMember(uid) {
+  if (!confirm(`Remove ${memberName(uid)}? This cannot be undone.`)) return;
+  db.members=db.members.filter(m=>m.id!==uid);
+  save(); document.getElementById('members-tbl').innerHTML=memberTable();
+}
+
+function resetPin() {
+  const uid=document.getElementById('reset-uid').value;
+  if (!uid) return flash('reset-alert','err','Select a member first.');
+  const user=db.members.find(m=>m.id===uid);
+  user.pin=null; save();
+  flash('reset-alert','ok',`✓ PIN reset for ${user.name}. They can sign up again to set a new one.`);
+}
+
+// ══════════════════════════════════════
+//  MEMBER: MY MEALS
+// ══════════════════════════════════════
+function renderMyMeals(pane) {
+  const uid=currentUser.id, date=today(), mx=getUserDay(uid,date), locked=!!mx.submitted;
+  pane.innerHTML=`
+    <div class="card">
+      <h2>Today's Meals</h2>
+      <p class="text-muted" style="margin-bottom:14px"><strong>${date}</strong></p>
+      ${locked
+        ? `<div class="submitted-banner">🔒 You've already submitted today's meals. Only the manager can make changes now.</div>`
+        : `<p class="text-muted" style="margin-bottom:18px">Select what you ate today, then press <strong>Submit & Lock</strong>. This cannot be changed after submission.</p>`
+      }
+      <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:22px;align-items:center">
+        <label class="meal-toggle"><input type="checkbox" id="ck-s" ${mx.sahur?'checked':''}    ${locked?'disabled':''}><span style="font-size:1rem">🌙 Sahur</span></label>
+        <label class="meal-toggle"><input type="checkbox" id="ck-b" ${mx.breakfast?'checked':''} ${locked?'disabled':''}><span style="font-size:1rem">🌅 Breakfast</span></label>
+        <label class="meal-toggle"><input type="checkbox" id="ck-l" ${mx.lunch?'checked':''}     ${locked?'disabled':''}><span style="font-size:1rem">☀️ Lunch</span></label>
+        <label class="meal-toggle"><input type="checkbox" id="ck-d" ${mx.dinner?'checked':''}    ${locked?'disabled':''}><span style="font-size:1rem">🌆 Dinner</span></label>
+      </div>
+      ${!locked?`<button class="btn green" onclick="submitMyMeals()">🔒 Submit & Lock</button>`:''}
+    </div>
+    <div class="card">
+      <h2>Meal History</h2>
+      <div class="month-sel"><label>Month</label><input type="month" id="hist-m" value="${ymStr(nowYM().year,nowYM().month)}" onchange="refreshMemberHistory()"></div>
+      <div id="hist-body">${memberHistoryHTML(uid,nowYM().year,nowYM().month)}</div>
+    </div>`;
+}
+
+function submitMyMeals() {
+  const uid=currentUser.id, date=today();
+  const s=document.getElementById('ck-s').checked, b=document.getElementById('ck-b').checked, l=document.getElementById('ck-l').checked, d=document.getElementById('ck-d').checked;
+  if (!db.meals[date]) db.meals[date]={};
+  db.meals[date][uid]={ sahur:s, breakfast:b, lunch:l, dinner:d, submitted:true };
+  save(); renderMyMeals(document.getElementById('tp-0'));
+}
+
+function refreshMemberHistory() {
+  const mv=document.getElementById('hist-m').value, [y,mo]=mv.split('-').map(Number);
+  document.getElementById('hist-body').innerHTML=memberHistoryHTML(currentUser.id,y,mo);
+}
+
+function memberHistoryHTML(uid,y,mo) {
+  const c=mealCounts(uid,y,mo), cost=mealCost(uid,y,mo), days=new Date(y,mo,0).getDate();
+  let rows='';
+  for (let day=1;day<=days;day++) {
+    const date=`${y}-${String(mo).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const mx=getUserDay(uid,date);
+    if (!mx.breakfast&&!mx.lunch&&!mx.dinner) continue;
+    rows+=`<tr><td>${date}</td><td>${bs(mx.sahur)}</td><td>${bb(mx.breakfast)}</td><td>${bl(mx.lunch)}</td><td>${bd(mx.dinner)}</td><td>${mx.submitted?'🔒':'✏️'}</td></tr>`;
+  }
+  return `
+    <div class="stats-row" style="margin-bottom:14px">
+      <div class="stat-card"><div class="s-label">Sahur</div><div class="s-val">${c.sahur}</div></div>
+      <div class="stat-card"><div class="s-label">Breakfast</div><div class="s-val">${c.breakfast}</div></div>
+      <div class="stat-card"><div class="s-label">Lunch</div><div class="s-val">${c.lunch}</div></div>
+      <div class="stat-card"><div class="s-label">Dinner</div><div class="s-val">${c.dinner}</div></div>
+      <div class="stat-card accent"><div class="s-label">Total Cost</div><div class="s-val">৳${cost.toLocaleString()}</div></div>
+    </div>
+    ${rows?`<table class="tbl"><thead><tr><th>Date</th><th>Sahur</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th><th>Locked</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="text-muted">No meals recorded this month.</p>'}`;
+}
+
+// ══════════════════════════════════════
+//  MEMBER: MY ACCOUNT
+// ══════════════════════════════════════
+function renderMyAccount(pane) {
+  const {year,month}=nowYM();
+  pane.innerHTML=`<div class="month-sel"><label>Month</label><input type="month" id="acc-m" value="${ymStr(year,month)}" onchange="refreshMyAccount()"></div><div id="acc-body"></div>`;
+  refreshMyAccount();
+}
+
+function refreshMyAccount() {
+  const mv=document.getElementById('acc-m').value, [y,mo]=mv.split('-').map(Number);
+  const uid=currentUser.id, cost=mealCost(uid,y,mo), dep=depositTotal(uid,y,mo), bal=dep-cost;
+  const myDeps=db.deposits.filter(d=>d.uid===uid&&d.year===y&&d.month===mo);
+  document.getElementById('acc-body').innerHTML=`
+    <div class="stats-row">
+      <div class="stat-card"><div class="s-label">Meal Cost</div><div class="s-val">৳${cost.toLocaleString()}</div></div>
+      <div class="stat-card green"><div class="s-label">Deposited</div><div class="s-val">৳${dep.toLocaleString()}</div></div>
+      <div class="stat-card ${bal>=0?'green':'accent'}"><div class="s-label">Balance</div><div class="s-val">${bal>=0?'+':''}৳${bal.toLocaleString()}</div></div>
+    </div>
+    <div class="card">
+      <h2>My Deposits — ${monthLabel(y,mo)}</h2>
+      ${myDeps.length
+        ?`<table class="tbl"><thead><tr><th>Date</th><th>Amount</th></tr></thead><tbody>${myDeps.map(d=>`<tr><td>${d.date}</td><td style="color:var(--accent2);font-weight:700">৳${d.amount.toLocaleString()}</td></tr>`).join('')}</tbody></table>`
+        :'<p class="text-muted">No deposits recorded for this month yet.</p>'
+      }
+      <div class="divider"></div>
+      <p class="text-muted">Rates — Sahur: ৳${db.mealPrices.sahur} · Breakfast: ৳${db.mealPrices.breakfast} · Lunch: ৳${db.mealPrices.lunch} · Dinner: ৳${db.mealPrices.dinner}</p>
+    </div>`;
+}
+</script>
+</body>
+</html>
